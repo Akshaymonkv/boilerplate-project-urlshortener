@@ -12,16 +12,19 @@ const isUrl = require('is-url')
 // Basic Configuration
 const port = process.env.PORT || 3000;
 
-app.use(cors());
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}))
-
+app.use(cors());
 app.use('/public', express.static(`${process.cwd()}/public`));
-
+/*
 let short_mem = {
   firstvalue: "",
   secondvalue: ""
 }
+*/
+
+let short_mem = new Map();
 
 
 app.get('/', function(req, res) {
@@ -35,44 +38,43 @@ app.get('/api/hello', function(req, res) {
 
 
 app.post('/api/shorturl',(req,res)=>{
+  console.log("Incoming request URL:", req.originalUrl);
   const urlValue = req.body.url
   const x = isUrl(urlValue)
-  console.log('X',x)
+  //console.log('X',x)
   if(x == false){
     res.json({
-      error: 'Invalid Url'
+      error: 'invalid url'
     })
     
   }
   else{
-    dns.resolve(urlValue.hostname,(err)=>{
-      if(err)res.json({error: 'Invalid Url'})
+    const parsedUrl = new url.parse(urlValue)
+    dns.resolve(parsedUrl.hostname,(err)=>{
+      if(err)res.json({error: 'invalid url'})
       else{
-        
+        const shortUrl = RandomNumber.getRandomNumber(0,100)
+        short_mem.set(shortUrl,urlValue)
+        console.log(short_mem)
+        res.json({
+          original_url: urlValue,
+          short_url : shortUrl
+        })
       }
     })
   }
-
-
-  const parsedUrl = new url.parse(urlValue)
 }
 )
-/*
-function storageFun(ogurl,newurl){
-  const short_mem = {
-    firstvalue: ogurl,
-    secondvalue: newurl
-  }
-  console.log(short_mem)
-}
-*/
 
+app.get('/api/shorturl/:surl',(req,res)=>{
+  console.log(req.params.surl)
+  const svalue = parseInt((req.params.surl),10)
+  console.log("The s value", svalue);
 
-app.get('/api/shorturl/:shorturl',(req,res)=>{
-  const svalue = req.params.shorturl
-  if(svalue == short_mem.secondvalue){
-    res.redirect(short_mem.firstvalue)
-  }
+  const ex = short_mem.get(svalue);
+  console.log("Url found:", ex);
+  res.redirect(ex); // Redirect to the original URL
+
 })
 
 function randomNumgen(){
